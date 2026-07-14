@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Over the Rainbow — 기억을 이어가는 시간</title>
   <style>
     :root {
@@ -15,8 +15,12 @@
       --muted: #808080;
       --rhythm: 1;
       --fade-short: 420ms;
+      --fade-entry: 1200ms;
       --fade-heading: 1800ms;
       --fade-out: 800ms;
+      --phrase-step: 520ms;
+      --phrase-pause: 220ms;
+      --motion-gentle: cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     * { box-sizing: border-box; }
@@ -24,6 +28,7 @@
       margin: 0;
       min-width: 320px;
       min-height: 100vh;
+      min-height: 100dvh;
       background: var(--canvas);
       color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
@@ -36,11 +41,14 @@
       align-items: start;
       gap: 28px;
       padding: 28px 20px;
+      min-height: 100vh;
+      min-height: 100dvh;
     }
     body.test-mode .layout { grid-template-columns: minmax(0, 393px) minmax(260px, 320px); }
 
     .phone {
       width: 393px;
+      height: 852px;
       min-height: 852px;
       position: relative;
       overflow: hidden;
@@ -76,8 +84,15 @@
     }
 
     .progress { display: flex; align-items: center; gap: 6px; }
-    .progress-dot { width: 6px; height: 6px; border-radius: 50%; background: #c4c4c4; }
-    .progress-dot.is-active { background: var(--ink); }
+    .progress-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #c4c4c4;
+      opacity: 0.55;
+      transition: background-color 700ms var(--motion-gentle), opacity 700ms var(--motion-gentle);
+    }
+    .progress-dot.is-active { background: var(--ink); opacity: 1; }
 
     .screen {
       min-height: 800px;
@@ -85,13 +100,17 @@
       flex-direction: column;
       padding: 32px 24px 24px;
       gap: 24px;
+      background: rgba(255, 255, 255, 0.96);
+      opacity: 0.96;
+      transition: background-color var(--fade-entry) var(--motion-gentle), opacity var(--fade-entry) var(--motion-gentle);
     }
+    .screen.is-entered { background: var(--surface); opacity: 1; }
 
     .sequence-item {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(5px);
       pointer-events: none;
-      transition: opacity var(--fade-short) ease-out, transform var(--fade-short) ease-out;
+      transition: opacity var(--fade-short) var(--motion-gentle), transform var(--fade-short) var(--motion-gentle);
     }
 
     .sequence-item.is-visible {
@@ -108,20 +127,26 @@
       font-weight: 700;
       transition-duration: var(--fade-heading);
     }
+    .label { transition-duration: var(--fade-entry); }
+    .phrase {
+      opacity: 0;
+      transition: opacity 360ms var(--motion-gentle);
+    }
+    .phrase.is-visible { opacity: 1; }
 
     .eyebrow { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; }
     .body { margin: 0; color: var(--secondary); font-size: 15px; line-height: 1.6; letter-spacing: -0.01em; }
     .detail { display: flex; flex-direction: column; gap: 10px; }
     .hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 
-    input, textarea {
+    input, textarea, select {
       width: 100%;
       border: 1px solid #8a8a8a;
       border-radius: 12px;
       background: var(--surface);
       color: var(--ink);
       font: inherit;
-      font-size: 15px;
+      font-size: 16px;
       outline-offset: 3px;
     }
     input { min-height: 52px; padding: 12px 14px; }
@@ -141,7 +166,7 @@
       text-align: center;
       font-size: 14px;
     }
-    .file-box input { width: auto; min-height: auto; max-width: 240px; border: 0; padding: 0; font-size: 12px; }
+    .file-box input { width: auto; min-height: auto; max-width: 240px; border: 0; padding: 0; font-size: 16px; }
 
     .actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
     .button {
@@ -203,7 +228,27 @@
 
     @media (max-width: 760px) {
       .layout, body.test-mode .layout { grid-template-columns: 1fr; justify-items: center; padding: 0; gap: 0; }
-      .phone { width: min(393px, 100vw); min-height: 852px; border-radius: 0; border-left: 0; border-right: 0; }
+      .phone {
+        width: min(393px, 100vw);
+        height: 100vh;
+        height: 100dvh;
+        min-height: 100vh;
+        min-height: 100dvh;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+      }
+      .screen {
+        height: calc(100vh - 52px);
+        height: calc(100dvh - 52px);
+        min-height: calc(100vh - 52px);
+        min-height: calc(100dvh - 52px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scroll-padding-bottom: calc(24px + env(safe-area-inset-bottom));
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      }
+      .screen:focus-within .actions { margin-top: 24px; }
       .test-panel { width: min(393px, 100vw); position: static; border-radius: 0; border-left: 0; border-right: 0; }
     }
 
@@ -280,6 +325,7 @@
       if (TEST_MODE) document.body.classList.add('test-mode');
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const root = document.getElementById('screen-root');
+      const phone = document.querySelector('.phone');
       const screenTitle = document.getElementById('screen-title');
       const metricScreen = document.getElementById('metric-screen');
       const metricDwell = document.getElementById('metric-dwell');
@@ -302,6 +348,8 @@
         pausedScreen: 0,
         completed: false,
         inputMetrics: {},
+        activeReveal: null,
+        narrative: null,
         sessionId: crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`,
         variantId: resolveVariant(DEFAULT_QUESTION_CONFIG)
       };
@@ -387,7 +435,14 @@
       }
 
       function updateProgress(index) {
-        progress.innerHTML = screens.map((_, dotIndex) => `<span class="progress-dot ${dotIndex < index || dotIndex === index ? 'is-active' : ''}" aria-hidden="true"></span>`).join('');
+        progress.innerHTML = screens.map(() => '<span class="progress-dot" aria-hidden="true"></span>').join('');
+        const activateDots = () => {
+          progress.querySelectorAll('.progress-dot').forEach((dot, dotIndex) => {
+            if (dotIndex <= index) dot.classList.add('is-active');
+          });
+        };
+        if (reducedMotion) activateDots();
+        else requestAnimationFrame(activateDots);
         progress.setAttribute('aria-label', index >= screens.length ? '이야기를 모두 들었어요' : '이야기 장면 진행 표시');
       }
 
@@ -431,6 +486,7 @@
         state.rhythm = Number(value);
         document.documentElement.style.setProperty('--rhythm', state.rhythm);
         document.documentElement.style.setProperty('--fade-short', `${420 * state.rhythm}ms`);
+        document.documentElement.style.setProperty('--fade-entry', `${1200 * state.rhythm}ms`);
         document.documentElement.style.setProperty('--fade-heading', `${1800 * state.rhythm}ms`);
         document.documentElement.style.setProperty('--fade-out', `${800 * state.rhythm}ms`);
         speedControls.querySelectorAll('[data-speed]').forEach(button => button.classList.toggle('is-active', Number(button.dataset.speed) === state.rhythm));
@@ -444,9 +500,15 @@
         state.timers = [];
       }
 
-      function schedule(className, atMs, eventName) {
+      function queue(callback, atMs) {
         const delay = reducedMotion ? 0 : atMs * state.rhythm;
-        const timer = setTimeout(() => {
+        const timer = setTimeout(callback, delay);
+        state.timers.push(timer);
+        return timer;
+      }
+
+      function schedule(className, atMs, eventName) {
+        queue(() => {
           const element = root.querySelector(`.${className}`);
           if (element) element.classList.add('is-visible');
           if (eventName) log(eventName);
@@ -454,13 +516,132 @@
             state.ctaVisible = true;
             root.querySelectorAll('.actions button').forEach(button => button.disabled = false);
           }
-        }, delay);
-        state.timers.push(timer);
+        }, atMs);
+      }
+
+      function splitIntoPhrases(text) {
+        const phrases = [];
+        String(text).split('\n').forEach((line, lineIndex, lines) => {
+          const words = line.match(/\S+\s*/g) || [];
+          let buffer = '';
+          let wordCount = 0;
+          words.forEach((word, wordIndex) => {
+            buffer += word;
+            wordCount += 1;
+            const pause = /[,.]$/.test(word.trim());
+            const isLastWord = wordIndex === words.length - 1;
+            if (wordCount >= 2 || pause || isLastWord) {
+              phrases.push({ text: buffer, pause });
+              buffer = '';
+              wordCount = 0;
+            }
+          });
+          if (lineIndex < lines.length - 1) phrases.push({ break: true });
+        });
+        return phrases;
+      }
+
+      function writeFullText(element, text) {
+        element.replaceChildren();
+        String(text).split('\n').forEach((line, index) => {
+          if (index) element.append(document.createElement('br'));
+          element.append(document.createTextNode(line));
+        });
+      }
+
+      function revealPhrases(element, text, onComplete) {
+        const phrases = splitIntoPhrases(text);
+        const timers = [];
+        let completed = false;
+        let reveal;
+        element.replaceChildren();
+        phrases.forEach(phrase => {
+          if (phrase.break) {
+            element.append(document.createElement('br'));
+            return;
+          }
+          const span = document.createElement('span');
+          span.className = 'phrase';
+          span.textContent = phrase.text;
+          element.append(span);
+          (reveal ||= []).push({ span, pause: phrase.pause });
+        });
+
+        const complete = () => {
+          if (completed) return;
+          completed = true;
+          reveal.forEach(item => item.span.classList.add('is-visible'));
+          if (state.activeReveal === sequence) state.activeReveal = null;
+          onComplete();
+        };
+        const sequence = {
+          finish() {
+            timers.forEach(clearTimeout);
+            complete();
+          }
+        };
+        state.activeReveal = sequence;
+
+        if (reducedMotion) {
+          complete();
+          return;
+        }
+
+        let delay = 0;
+        reveal.forEach(item => {
+          const timer = queue(() => item.span.classList.add('is-visible'), delay);
+          timers.push(timer);
+          delay += 520 + (item.pause ? 220 : 0);
+        });
+        const completeTimer = queue(complete, delay);
+        timers.push(completeTimer);
+      }
+
+      function showAllNarrative() {
+        if (!state.narrative) return;
+        const { headingElement, headingText, supportElement, supportText } = state.narrative;
+        writeFullText(headingElement, headingText);
+        if (supportElement) writeFullText(supportElement, supportText);
+        state.activeReveal = null;
+      }
+
+      function beginNarrative() {
+        const { headingElement, headingText, supportElement, supportText } = state.narrative;
+        headingElement.classList.add('is-visible');
+        log('headline_started');
+        revealPhrases(headingElement, headingText, () => {
+          log('headline_complete');
+          if (!supportElement) {
+            schedule('detail-item', 800, 'detail_shown');
+            schedule('actions', 1900, 'cta_shown');
+            return;
+          }
+          queue(() => {
+            supportElement.classList.add('is-visible');
+            log('support_started');
+            revealPhrases(supportElement, supportText, () => {
+              log('support_complete');
+              schedule('detail-item', 800, 'detail_shown');
+              schedule('actions', 1900, 'cta_shown');
+            });
+          }, 420);
+        });
+      }
+
+      function showEntranceSignal() {
+        const screen = root.querySelector('.screen');
+        if (!screen) return;
+        if (reducedMotion) {
+          screen.classList.add('is-entered');
+          return;
+        }
+        requestAnimationFrame(() => screen.classList.add('is-entered'));
       }
 
       function skipAnimation() {
         if (state.ended) return;
         clearTimers();
+        showAllNarrative();
         root.querySelectorAll('.sequence-item').forEach(element => element.classList.add('is-visible'));
         root.querySelectorAll('.actions button').forEach(button => button.disabled = false);
         state.ctaVisible = true;
@@ -495,6 +676,8 @@
         state.ended = false;
         state.screen = index;
         state.ctaVisible = false;
+        state.activeReveal = null;
+        state.narrative = null;
         state.stageStartedAt = performance.now();
         const data = screens[index];
         const heading = typeof data.heading === 'function' ? data.heading() : data.heading;
@@ -512,16 +695,22 @@
           </section>`;
         updatePlaceChrome();
         updateProgress(index);
+        showEntranceSignal();
+        const headingElement = root.querySelector('.headline-item');
+        const supportElement = root.querySelector('.support');
+        state.narrative = {
+          headingElement,
+          headingText: headingElement.innerText,
+          supportElement,
+          supportText: supportElement ? supportElement.innerText : ''
+        };
         metricScreen.textContent = `${index + 1} / 6`;
         bindInputs();
         root.querySelector('#primary').addEventListener('click', () => advance('primary'));
         root.querySelector('#skip').addEventListener('click', () => advance('skip'));
         log(replay ? 'screen_replayed' : 'screen_entered', { label: data.label, rhythm: state.rhythm });
-        schedule('label', 600, 'label_shown');
-        schedule('headline-item', 1400, 'headline_started');
-        schedule('support', 4400, 'support_shown');
-        schedule('detail-item', 7000, 'detail_shown');
-        schedule('actions', 9000, 'cta_shown');
+        schedule('label', 0, 'label_shown');
+        queue(beginNarrative, 360);
       }
 
       function advance(reason) {
@@ -607,6 +796,12 @@
       speedControls.addEventListener('click', event => {
         const button = event.target.closest('[data-speed]');
         if (button) setRhythm(button.dataset.speed);
+      });
+      root.addEventListener('click', event => {
+        if (!state.activeReveal) return;
+        if (event.target.closest('button, input, textarea, select, label, a')) return;
+        state.activeReveal.finish();
+        log('text_revealed_by_tap');
       });
       window.addEventListener('popstate', () => log('browser_back_navigation'));
 
