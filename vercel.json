@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/outputs/over_the_rainbow_post_loss_timing_prototype.html"
+      "destination": "/index.html"
     }
   ]
 }

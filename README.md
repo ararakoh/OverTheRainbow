@@ -14,7 +14,7 @@
 
 배포된 URL 또는 아래 파일을 브라우저에서 열어 실행합니다.
 
-`outputs/over_the_rainbow_post_loss_timing_prototype.html`
+`index.html`
 
 질문 JSON을 실제로 불러오는 환경이 필요하면 프로젝트 루트에서 간단한 정적 서버를 실행합니다.
 
@@ -26,7 +26,7 @@ python -m http.server 8000
 
 ## A/B 질문
 
-질문 카피는 `outputs/questions.json`에 분리되어 있습니다.
+질문 카피는 `assets/questions.json`에 분리되어 있습니다.
 
 - `memory_question_a`: 창가 단서
 - `memory_question_b`: 현관 단서
@@ -59,4 +59,3 @@ python -m http.server 8000
 이 저장소는 Voice Guide, Memory Cue Library, Letter Prompt Rules 등 핵심 자산을 포함하므로 **Private GitHub Repository**로 운영합니다. Vercel은 private repository와 연동해도 자동 배포가 가능합니다.
 
 `vercel.json`은 루트 URL을 인터랙션 프로토타입으로 연결합니다.
-

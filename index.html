@@ -393,7 +393,7 @@
 
       async function loadQuestionConfig() {
         try {
-          const response = await fetch('./questions.json', { cache: 'no-store' });
+          const response = await fetch('./assets/questions.json', { cache: 'no-store' });
           if (!response.ok) throw new Error(`Question config: ${response.status}`);
           const config = await response.json();
           if (!config.variants || !Object.keys(config.variants).length) throw new Error('Question config has no variants');
