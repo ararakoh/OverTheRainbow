@@ -1,0 +1,54 @@
+{
+  "experiment_id": "cat-memory-cue-v1",
+  "default_variant": "memory_question_a",
+  "variants": {
+    "memory_question_a": {
+      "label": "창가 단서",
+      "screens": {
+        "first_memory": {
+          "heading": "창가 쪽이 먼저 생각나나요?",
+          "body": "햇볕이 들면 오래 앉아 있던 자리처럼요."
+        },
+        "bedding": {
+          "heading": "이불 속으로 들어오던\n시간이 있었나요?",
+          "body": "발밑인지, 옆구리인지, 꼭 정해진 자리가 있었을지도요."
+        },
+        "expression": {
+          "heading": "이름을 부르면\n어떤 표정이 떠오르세요?",
+          "body": "귀가 먼저 움직였는지, 눈을 가늘게 떴는지요."
+        },
+        "photo": {
+          "heading": "사진이 있다면,\n한 장만 골라주세요.",
+          "body": "사진 속에서 제일 먼저 눈이 가는 곳이 있을지도요."
+        },
+        "letter": {
+          "heading": "첫 편지는, 남겨둔\n장면에서 시작돼요."
+        }
+      }
+    },
+    "memory_question_b": {
+      "label": "현관 단서",
+      "screens": {
+        "first_memory": {
+          "heading": "현관문 소리가 나면\n먼저 움직이던 곳이 있었나요?",
+          "body": "신발장 앞일 수도, 복도 끝일 수도 있어요."
+        },
+        "bedding": {
+          "heading": "이불 속으로 들어오던\n시간이 있었나요?",
+          "body": "발밑인지, 옆구리인지, 꼭 정해진 자리가 있었을지도요."
+        },
+        "expression": {
+          "heading": "이름을 부르면\n어떤 표정이 떠오르세요?",
+          "body": "귀가 먼저 움직였는지, 눈을 가늘게 떴는지요."
+        },
+        "photo": {
+          "heading": "사진이 있다면,\n한 장만 골라주세요.",
+          "body": "사진 속에서 제일 먼저 눈이 가는 곳이 있을지도요."
+        },
+        "letter": {
+          "heading": "첫 편지는, 남겨둔\n장면에서 시작돼요."
+        }
+      }
+    }
+  }
+}

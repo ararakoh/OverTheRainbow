@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Over the Rainbow — 기억을 이어가는 시간</title>
+  <style>
+    :root {
+      --canvas: #ededed;
+      --surface: #ffffff;
+      --soft: #f2f2f2;
+      --line: #bcbcbc;
+      --ink: #1e1e1e;
+      --secondary: #5f5f5f;
+      --muted: #808080;
+      --rhythm: 1;
+      --fade-short: 420ms;
+      --fade-heading: 1800ms;
+      --fade-out: 800ms;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 393px);
+      justify-content: center;
+      align-items: start;
+      gap: 28px;
+      padding: 28px 20px;
+    }
+    body.test-mode .layout { grid-template-columns: minmax(0, 393px) minmax(260px, 320px); }
+
+    .phone {
+      width: 393px;
+      min-height: 852px;
+      position: relative;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid #707070;
+      border-radius: 24px;
+    }
+
+    .topbar {
+      height: 52px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+      color: var(--secondary);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .exit-button {
+      justify-self: end;
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--secondary);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .progress { display: flex; align-items: center; gap: 6px; }
+    .progress-dot { width: 6px; height: 6px; border-radius: 50%; background: #c4c4c4; }
+    .progress-dot.is-active { background: var(--ink); }
+
+    .screen {
+      min-height: 800px;
+      display: flex;
+      flex-direction: column;
+      padding: 32px 24px 24px;
+      gap: 24px;
+    }
+
+    .sequence-item {
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity var(--fade-short) ease-out, transform var(--fade-short) ease-out;
+    }
+
+    .sequence-item.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .headline {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.35;
+      letter-spacing: -0.035em;
+      font-weight: 700;
+      transition-duration: var(--fade-heading);
+    }
+
+    .eyebrow { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .body { margin: 0; color: var(--secondary); font-size: 15px; line-height: 1.6; letter-spacing: -0.01em; }
+    .detail { display: flex; flex-direction: column; gap: 10px; }
+    .hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid #8a8a8a;
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      font-size: 15px;
+      outline-offset: 3px;
+    }
+    input { min-height: 52px; padding: 12px 14px; }
+    textarea { min-height: 118px; padding: 14px; resize: none; line-height: 1.55; }
+    .form-stack { display: flex; flex-direction: column; gap: 10px; }
+    .file-box {
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 1px dashed #8a8a8a;
+      border-radius: 16px;
+      background: var(--soft);
+      color: var(--secondary);
+      text-align: center;
+      font-size: 14px;
+    }
+    .file-box input { width: auto; min-height: auto; max-width: 240px; border: 0; padding: 0; font-size: 12px; }
+
+    .actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+    .button {
+      width: 100%;
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--ink);
+      border-radius: 12px;
+      background: var(--ink);
+      color: #fff;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .button:disabled { cursor: default; }
+    .button--quiet { border-color: transparent; background: transparent; color: var(--secondary); font-weight: 600; }
+    .button--quiet:disabled { color: #ababab; }
+
+    .screen.is-leaving .sequence-item { opacity: 0; transform: translateY(0); pointer-events: none; transition-duration: var(--fade-out); }
+    .complete { justify-content: center; }
+
+    .test-panel {
+      display: none;
+      position: sticky;
+      top: 20px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+      font-size: 13px;
+    }
+    body.test-mode .test-panel { display: block; }
+    .test-panel h2 { margin: 0 0 14px; font-size: 15px; }
+    .panel-group { padding: 12px 0; border-top: 1px solid #dedede; }
+    .panel-group:first-of-type { border-top: 0; padding-top: 0; }
+    .panel-label { display: block; margin-bottom: 8px; color: var(--secondary); font-size: 12px; font-weight: 700; }
+    .speed-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .panel-button {
+      min-height: 36px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .panel-button.is-active { border-color: var(--ink); background: var(--ink); color: #fff; }
+    .metrics { display: grid; gap: 8px; }
+    .metric { display: flex; justify-content: space-between; gap: 12px; color: var(--secondary); }
+    .metric strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .panel-actions { display: grid; gap: 8px; }
+    .panel-actions .panel-button { text-align: left; padding-left: 10px; }
+    .panel-note { margin: 10px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+    @media (max-width: 760px) {
+      .layout, body.test-mode .layout { grid-template-columns: 1fr; justify-items: center; padding: 0; gap: 0; }
+      .phone { width: min(393px, 100vw); min-height: 852px; border-radius: 0; border-left: 0; border-right: 0; }
+      .test-panel { width: min(393px, 100vw); position: static; border-radius: 0; border-left: 0; border-right: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <section class="phone" aria-label="기억을 이어가는 시간 리듬 테스트">
+      <header class="topbar">
+        <span id="screen-title">그 아이의 자리</span>
+        <div class="progress" id="progress" aria-label="현재 장면"></div>
+        <button class="exit-button" id="exit-button" type="button">잠깐 멈추기</button>
+      </header>
+      <div id="screen-root"></div>
+    </section>
+
+    <aside class="test-panel" aria-label="테스트 컨트롤 패널">
+      <h2>리듬 테스트</h2>
+      <div class="panel-group">
+        <span class="panel-label">리듬 배율 <span id="speed-note">(1× 기준)</span></span>
+        <div class="speed-row" id="speed-controls">
+          <button class="panel-button" data-speed="0.5" type="button">0.5×</button>
+          <button class="panel-button is-active" data-speed="1" type="button">1×</button>
+          <button class="panel-button" data-speed="2" type="button">2×</button>
+          <button class="panel-button" data-speed="4" type="button">4×</button>
+        </div>
+        <p class="panel-note">숫자가 클수록 더 느리게 재생됩니다. 4×는 기본 리듬의 4배입니다.</p>
+      </div>
+      <div class="panel-group metrics">
+        <div class="metric"><span>현재 화면</span><strong id="metric-screen">1 / 6</strong></div>
+        <div class="metric"><span>화면 체류</span><strong id="metric-dwell">00:00.0</strong></div>
+        <div class="metric"><span>전체 경과</span><strong id="metric-total">00:00.0</strong></div>
+      </div>
+      <div class="panel-group panel-actions">
+        <button class="panel-button" id="skip-animation-button" type="button">Animation Skip</button>
+        <button class="panel-button" id="replay-button" type="button">애니메이션 다시 보기</button>
+        <button class="panel-button" id="previous-screen-button" type="button">Previous Screen</button>
+        <button class="panel-button" id="force-next-button" type="button">Next Screen</button>
+        <button class="panel-button" id="download-log-button" type="button">Export JSON</button>
+      </div>
+      <p class="panel-note">입력 내용은 이 기기에만 임시 저장됩니다. 내보내는 로그에는 입력 여부와 글자 수만 포함됩니다.</p>
+    </aside>
+  </main>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'overTheRainbow.postLossDraft.v1';
+      const VARIANT_STORAGE_KEY = 'overTheRainbow.questionVariant.v1';
+      const TEST_MODE = new URLSearchParams(window.location.search).get('test') === 'true';
+      const DEFAULT_QUESTION_CONFIG = {
+        experiment_id: 'cat-memory-cue-v1',
+        default_variant: 'memory_question_a',
+        variants: {
+          memory_question_a: { label: '창가 단서', screens: {
+            first_memory: { heading: '창가 쪽이 먼저 생각나나요?', body: '햇볕이 들면 오래 앉아 있던 자리처럼요.' },
+            bedding: { heading: '이불 속으로 들어오던\n시간이 있었나요?', body: '발밑인지, 옆구리인지, 꼭 정해진 자리가 있었을지도요.' },
+            expression: { heading: '이름을 부르면\n어떤 표정이 떠오르세요?', body: '귀가 먼저 움직였는지, 눈을 가늘게 떴는지요.' },
+            photo: { heading: '사진이 있다면,\n한 장만 골라주세요.', body: '사진 속에서 제일 먼저 눈이 가는 곳이 있을지도요.' },
+            letter: { heading: '첫 편지는, 남겨둔\n장면에서 시작돼요.' }
+          }},
+          memory_question_b: { label: '현관 단서', screens: {
+            first_memory: { heading: '현관문 소리가 나면\n먼저 움직이던 곳이 있었나요?', body: '신발장 앞일 수도, 복도 끝일 수도 있어요.' },
+            bedding: { heading: '이불 속으로 들어오던\n시간이 있었나요?', body: '발밑인지, 옆구리인지, 꼭 정해진 자리가 있었을지도요.' },
+            expression: { heading: '이름을 부르면\n어떤 표정이 떠오르세요?', body: '귀가 먼저 움직였는지, 눈을 가늘게 떴는지요.' },
+            photo: { heading: '사진이 있다면,\n한 장만 골라주세요.', body: '사진 속에서 제일 먼저 눈이 가는 곳이 있을지도요.' },
+            letter: { heading: '첫 편지는, 남겨둔\n장면에서 시작돼요.' }
+          }}
+        }
+      };
+      let questionConfig = DEFAULT_QUESTION_CONFIG;
+      if (TEST_MODE) document.body.classList.add('test-mode');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const root = document.getElementById('screen-root');
+      const screenTitle = document.getElementById('screen-title');
+      const metricScreen = document.getElementById('metric-screen');
+      const metricDwell = document.getElementById('metric-dwell');
+      const metricTotal = document.getElementById('metric-total');
+      const speedNote = document.getElementById('speed-note');
+      const speedControls = document.getElementById('speed-controls');
+      const progress = document.getElementById('progress');
+
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      const state = {
+        screen: 0,
+        rhythm: 1,
+        stageStartedAt: performance.now(),
+        sessionStartedAt: performance.now(),
+        timers: [],
+        log: [],
+        draft: stored,
+        ctaVisible: false,
+        ended: false,
+        pausedScreen: 0,
+        completed: false,
+        inputMetrics: {},
+        sessionId: crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`,
+        variantId: resolveVariant(DEFAULT_QUESTION_CONFIG)
+      };
+
+      function resolveVariant(config) {
+        const variants = Object.keys(config.variants || {});
+        const requested = new URLSearchParams(window.location.search).get('variant');
+        if (requested && variants.includes(requested)) return requested;
+        const saved = localStorage.getItem(VARIANT_STORAGE_KEY);
+        if (saved && variants.includes(saved)) return saved;
+        const selected = config.default_variant && variants.includes(config.default_variant)
+          ? config.default_variant
+          : variants[Math.floor(Math.random() * variants.length)];
+        localStorage.setItem(VARIANT_STORAGE_KEY, selected);
+        return selected;
+      }
+
+      function copyFor(key) {
+        return questionConfig.variants[state.variantId].screens[key];
+      }
+
+      const screens = [
+        {
+          label: '창가',
+          heading: () => copyFor('first_memory').heading,
+          body: () => copyFor('first_memory').body,
+          detail: () => `<textarea data-key="place" placeholder="창가, 현관 앞, 이불 속…">${escapeHTML(state.draft.place || '')}</textarea>`,
+          action: '생각나는 곳 적기',
+          skip: '다음에 생각하기'
+        },
+        {
+          label: '이불 속',
+          heading: () => copyFor('bedding').heading,
+          body: () => copyFor('bedding').body,
+          detail: () => `<textarea data-key="bedding" placeholder="그때의 자리나 버릇을 적어둘 수 있어요.">${escapeHTML(state.draft.bedding || '')}</textarea>`,
+          action: '계속 이어가기',
+          skip: '이 장면은 다음에'
+        },
+        {
+          label: '부르던 이름',
+          heading: () => copyFor('expression').heading,
+          body: () => copyFor('expression').body,
+          detail: () => `<textarea data-key="expression" placeholder="그 표정을 적어둘 수 있어요.">${escapeHTML(state.draft.expression || '')}</textarea>`,
+          action: '그 표정 적기',
+          skip: '이 장면은 다음에'
+        },
+        {
+          label: '이름',
+          heading: '이름을 알려주세요.',
+          body: '',
+          detail: () => `<div class="form-stack"><input data-key="name" aria-label="이름" placeholder="이름" value="${escapeHTML(state.draft.name || '')}"><input data-key="age" aria-label="나이" placeholder="나이 · 선택" value="${escapeHTML(state.draft.age || '')}"><input data-key="trait" aria-label="특징" placeholder="자주 하던 것 · 선택" value="${escapeHTML(state.draft.trait || '')}"></div>`,
+          action: '다음',
+          skip: '나중에 입력하기'
+        },
+        {
+          label: '사진',
+          heading: () => copyFor('photo').heading,
+          body: () => copyFor('photo').body,
+          detail: () => `<label class="file-box">사진 선택 · 선택<input id="photo-input" type="file" accept="image/*"><span id="photo-name">${escapeHTML(state.draft.photoName || '선택한 사진 없음')}</span></label>`,
+          action: '사진과 함께 보기',
+          skip: '사진 없이 이어가기'
+        },
+        {
+          label: '첫 편지',
+          heading: () => copyFor('letter').heading,
+          body: () => `${state.draft.name ? escapeHTML(state.draft.name) + '의' : '그 아이의'} 창가와 이불 속, 부르던 이름. 그 안에 있던 것부터요.`,
+          detail: () => `<div class="detail"><p class="hint">${state.draft.name ? escapeHTML(state.draft.name) + '의 자리' : '그 아이의 자리'}에서 기억을 더 남기거나, 첫 편지를 기다릴 수 있어요.</p></div>`,
+          action: '기억 이어가기',
+          skip: '잠깐 멈추기'
+        }
+      ];
+
+      function escapeHTML(value) {
+        return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+      }
+
+      function getPlaceName() {
+        return state.draft.name ? `${state.draft.name}의 자리` : '그 아이의 자리';
+      }
+
+      function updatePlaceChrome() {
+        screenTitle.textContent = getPlaceName();
+      }
+
+      function updateProgress(index) {
+        progress.innerHTML = screens.map((_, dotIndex) => `<span class="progress-dot ${dotIndex < index || dotIndex === index ? 'is-active' : ''}" aria-hidden="true"></span>`).join('');
+        progress.setAttribute('aria-label', index >= screens.length ? '이야기를 모두 들었어요' : '이야기 장면 진행 표시');
+      }
+
+      async function loadQuestionConfig() {
+        try {
+          const response = await fetch('./questions.json', { cache: 'no-store' });
+          if (!response.ok) throw new Error(`Question config: ${response.status}`);
+          const config = await response.json();
+          if (!config.variants || !Object.keys(config.variants).length) throw new Error('Question config has no variants');
+          questionConfig = config;
+          state.variantId = resolveVariant(questionConfig);
+          log('question_config_loaded', { experimentId: questionConfig.experiment_id });
+          if (!state.ended && state.screen === 0) startScreen(0, true);
+        } catch (error) {
+          log('question_config_fallback', { source: 'embedded_local_fallback' });
+        }
+      }
+
+      function clock(ms) {
+        const seconds = Math.max(0, ms) / 1000;
+        const minutes = Math.floor(seconds / 60);
+        return `${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}.${Math.floor((seconds % 1) * 10)}`;
+      }
+
+      function log(event, detail = {}) {
+        state.log.push({
+          event,
+          screen: state.screen + 1,
+          variantId: state.variantId,
+          elapsedMs: Math.round(performance.now() - state.sessionStartedAt),
+          timestamp: new Date().toISOString(),
+          ...detail
+        });
+      }
+
+      function saveDraft() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.draft));
+      }
+
+      function setRhythm(value) {
+        state.rhythm = Number(value);
+        document.documentElement.style.setProperty('--rhythm', state.rhythm);
+        document.documentElement.style.setProperty('--fade-short', `${420 * state.rhythm}ms`);
+        document.documentElement.style.setProperty('--fade-heading', `${1800 * state.rhythm}ms`);
+        document.documentElement.style.setProperty('--fade-out', `${800 * state.rhythm}ms`);
+        speedControls.querySelectorAll('[data-speed]').forEach(button => button.classList.toggle('is-active', Number(button.dataset.speed) === state.rhythm));
+        speedNote.textContent = state.rhythm === 1 ? '(1× 기준)' : `(기본보다 ${state.rhythm}배 ${state.rhythm > 1 ? '느리게' : '빠르게'})`;
+        log('rhythm_changed', { rhythm: state.rhythm });
+        if (!state.ended) startScreen(state.screen, true);
+      }
+
+      function clearTimers() {
+        state.timers.forEach(clearTimeout);
+        state.timers = [];
+      }
+
+      function schedule(className, atMs, eventName) {
+        const delay = reducedMotion ? 0 : atMs * state.rhythm;
+        const timer = setTimeout(() => {
+          const element = root.querySelector(`.${className}`);
+          if (element) element.classList.add('is-visible');
+          if (eventName) log(eventName);
+          if (className === 'actions') {
+            state.ctaVisible = true;
+            root.querySelectorAll('.actions button').forEach(button => button.disabled = false);
+          }
+        }, delay);
+        state.timers.push(timer);
+      }
+
+      function skipAnimation() {
+        if (state.ended) return;
+        clearTimers();
+        root.querySelectorAll('.sequence-item').forEach(element => element.classList.add('is-visible'));
+        root.querySelectorAll('.actions button').forEach(button => button.disabled = false);
+        state.ctaVisible = true;
+        log('animation_skipped');
+      }
+
+      function bindInputs() {
+        root.querySelectorAll('[data-key]').forEach(input => {
+          input.addEventListener('input', () => {
+            state.draft[input.dataset.key] = input.value;
+            saveDraft();
+            if (input.dataset.key === 'name') updatePlaceChrome();
+            state.inputMetrics[input.dataset.key] = { interacted: true, length: input.value.length };
+            log('input_updated', { key: input.dataset.key, length: input.value.length });
+          });
+        });
+        const photoInput = root.querySelector('#photo-input');
+        if (photoInput) {
+          photoInput.addEventListener('change', () => {
+            state.draft.photoName = photoInput.files[0] ? photoInput.files[0].name : '';
+            saveDraft();
+            const name = root.querySelector('#photo-name');
+            if (name) name.textContent = state.draft.photoName || '선택한 사진 없음';
+            state.inputMetrics.photo = { interacted: true, selected: Boolean(state.draft.photoName) };
+            log('photo_selected', { selected: Boolean(state.draft.photoName) });
+          });
+        }
+      }
+
+      function startScreen(index, replay = false) {
+        clearTimers();
+        state.ended = false;
+        state.screen = index;
+        state.ctaVisible = false;
+        state.stageStartedAt = performance.now();
+        const data = screens[index];
+        const heading = typeof data.heading === 'function' ? data.heading() : data.heading;
+        const body = typeof data.body === 'function' ? data.body() : data.body;
+        root.innerHTML = `
+          <section class="screen" aria-live="polite">
+            <p class="eyebrow sequence-item label">${data.label}</p>
+            <h1 class="headline sequence-item headline-item">${heading.replace(/\n/g, '<br>')}</h1>
+            ${body ? `<p class="body sequence-item support">${body}</p>` : ''}
+            <div class="detail sequence-item detail-item">${data.detail()}</div>
+            <div class="actions sequence-item">
+              <button class="button" id="primary" type="button" disabled>${data.action}</button>
+              <button class="button button--quiet" id="skip" type="button" disabled>${data.skip}</button>
+            </div>
+          </section>`;
+        updatePlaceChrome();
+        updateProgress(index);
+        metricScreen.textContent = `${index + 1} / 6`;
+        bindInputs();
+        root.querySelector('#primary').addEventListener('click', () => advance('primary'));
+        root.querySelector('#skip').addEventListener('click', () => advance('skip'));
+        log(replay ? 'screen_replayed' : 'screen_entered', { label: data.label, rhythm: state.rhythm });
+        schedule('label', 600, 'label_shown');
+        schedule('headline-item', 1400, 'headline_started');
+        schedule('support', 4400, 'support_shown');
+        schedule('detail-item', 7000, 'detail_shown');
+        schedule('actions', 9000, 'cta_shown');
+      }
+
+      function advance(reason) {
+        if (!state.ctaVisible && reason !== 'force') return;
+        saveDraft();
+        log('button_clicked', { button: reason });
+        log('screen_advanced', { reason, dwellMs: Math.round(performance.now() - state.stageStartedAt) });
+        if (state.screen === screens.length - 1) {
+          endOnboarding(reason);
+          return;
+        }
+        const screen = root.querySelector('.screen');
+        clearTimers();
+        if (screen) screen.classList.add('is-leaving');
+        const delay = reducedMotion ? 0 : 800 * state.rhythm;
+        state.timers.push(setTimeout(() => startScreen(state.screen + 1), delay));
+      }
+
+      function goBack() {
+        if (state.ended || state.screen === 0) return;
+        clearTimers();
+        log('back_navigation', { fromScreen: state.screen + 1, dwellMs: Math.round(performance.now() - state.stageStartedAt) });
+        startScreen(state.screen - 1);
+      }
+
+      function endOnboarding(reason) {
+        clearTimers();
+        state.pausedScreen = state.screen;
+        state.ended = true;
+        state.completed = reason === 'primary';
+        log(state.completed ? 'onboarding_completed' : 'onboarding_interrupted', {
+          reason,
+          completed: state.completed,
+          totalMs: Math.round(performance.now() - state.sessionStartedAt)
+        });
+        const placeName = state.draft.name ? `${escapeHTML(state.draft.name)}의 자리` : '그 아이의 자리';
+        const paused = reason === 'exit_button';
+        root.innerHTML = `
+          <section class="screen complete" aria-live="polite">
+            <p class="eyebrow">${placeName}</p>
+            <h1 class="headline is-visible">기억을 이어갈 수 있어요.</h1>
+            <p class="body is-visible">남겨둔 장면은 타임라인에 있습니다.</p>
+            ${paused ? '<div class="actions is-visible"><button class="button" id="restart" type="button">이야기 이어가기</button></div>' : ''}
+          </section>`;
+        screenTitle.textContent = placeName;
+        updateProgress(screens.length);
+        metricScreen.textContent = '완료';
+        const restart = root.querySelector('#restart');
+        if (restart) restart.addEventListener('click', () => startScreen(state.pausedScreen, true));
+      }
+
+      document.getElementById('exit-button').addEventListener('click', () => {
+        log('button_clicked', { button: 'pause' });
+        endOnboarding('exit_button');
+      });
+      document.getElementById('skip-animation-button').addEventListener('click', skipAnimation);
+      document.getElementById('replay-button').addEventListener('click', () => { if (!state.ended) startScreen(state.screen, true); });
+      document.getElementById('previous-screen-button').addEventListener('click', goBack);
+      document.getElementById('force-next-button').addEventListener('click', () => { if (!state.ended) advance('force'); });
+      document.getElementById('download-log-button').addEventListener('click', () => {
+        log('log_exported');
+        const payload = {
+          exportedAt: new Date().toISOString(),
+          session: {
+            sessionId: state.sessionId,
+            experimentId: questionConfig.experiment_id,
+            variantId: state.variantId,
+            testMode: TEST_MODE,
+            completed: state.completed,
+            totalElapsedMs: Math.round(performance.now() - state.sessionStartedAt)
+          },
+          inputSummary: state.inputMetrics,
+          log: state.log
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'over-the-rainbow-rhythm-test-log.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+      speedControls.addEventListener('click', event => {
+        const button = event.target.closest('[data-speed]');
+        if (button) setRhythm(button.dataset.speed);
+      });
+      window.addEventListener('popstate', () => log('browser_back_navigation'));
+
+      setInterval(() => {
+        metricTotal.textContent = clock(performance.now() - state.sessionStartedAt);
+        metricDwell.textContent = state.ended ? '—' : clock(performance.now() - state.stageStartedAt);
+      }, 100);
+
+      log('test_started', { reducedMotion, plannedGateMs: 9000, stages: screens.length });
+      startScreen(0);
+      loadQuestionConfig();
+    })();
+  </script>
+</body>
+</html>
